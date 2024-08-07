@@ -8,7 +8,8 @@ sample_all = 0
 route_num = {}
 town_num = {}
 
-dataset_directory='dataset'
+dataset_directory=''
+# dataset_directory='dataset'
 
 for i in range(1):
     subs = os.listdir(os.path.join(dataset_directory,"weather-%d/data" % i))

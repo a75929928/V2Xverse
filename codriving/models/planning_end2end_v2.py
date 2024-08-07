@@ -50,7 +50,7 @@ class WaypointPlanner_e2e_v2(nn.Module):
     """
     WaypointPlanner with BEV feature and road map as inputs
     """
-    def __init__(self,):
+    def __init__(self, feature_dir=128):
         super().__init__()
         height_feat_size = 5
         self.conv_pre_1_no_occ = nn.Conv2d(height_feat_size, 32, kernel_size=3, stride=1, padding=1)
@@ -59,7 +59,7 @@ class WaypointPlanner_e2e_v2(nn.Module):
         self.bn_pre_2 = nn.BatchNorm2d(32)
 
         ####### for extral feature
-        self.conv_pre_1_f = nn.Conv2d(128, 32, kernel_size=3, stride=1, padding=1)
+        self.conv_pre_1_f = nn.Conv2d(feature_dir, 32, kernel_size=3, stride=1, padding=1)
         self.conv_pre_2_f = nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1)
         self.bn_pre_1_f = nn.BatchNorm2d(32)
         self.bn_pre_2_f = nn.BatchNorm2d(32)

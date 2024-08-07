@@ -194,6 +194,8 @@ class centerpointwhere2commmulticlass(nn.Module):
                        'bbox_preds_single': rm_single,   # [12, 8, 100, 100]
                        'comm_rate': communication_rates
                        })
+        
+        output_dict.update({'fused_feature': fused_feature}) # For Planner
         return output_dict
 
     def generate_predicted_boxes(self, cls_preds, box_preds, dir_cls_preds=None):

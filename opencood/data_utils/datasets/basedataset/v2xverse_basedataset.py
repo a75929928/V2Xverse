@@ -52,13 +52,16 @@ class V2XVERSEBaseDataset(Dataset):
         self.test_flag = False
         if self.train:
             root_dir = params['root_dir']
-            towns = [1,2,3,4,6]
+            towns = [1,2,3]
+            # towns = [1,2,3,4,6]
         elif not visualize:
             root_dir = params['validate_dir']
-            towns = [7,10] # [6,7,8,9,10]
+            towns = [4] # [6,7,8,9,10]
+            # towns = [7,10] # [6,7,8,9,10]
         else:
             root_dir = params['test_dir']
-            towns = [5]
+            towns = [4]
+            # towns = [5]
             self.test_flag = True
         self.root_dir = root_dir 
         self.clock = 0
@@ -189,14 +192,21 @@ class V2XVERSEBaseDataset(Dataset):
         print("Sub route dir nums: %d" % len(self.route_frames))
 
     def _load_text(self, path):
-        text = open(os.path.join(self.root_dir,path), 'r').read()
+        # NOTE Originial One Regardless repeat prefix
+        if path.startswith(self.root_dir):
+            text = open(path, 'r').read()
+        else:
+            text = open(os.path.join(self.root_dir,path), 'r').read()
         return text
 
     def _load_image(self, path):
         trans_totensor = torchvision.transforms.ToTensor()
         trans_toPIL = torchvision.transforms.ToPILImage()
         try:
-            img = Image.open(os.path.join(self.root_dir,path))
+            if path.startswith(self.root_dir):
+                img = Image.open(path)
+            else:
+                img = Image.open(os.path.join(self.root_dir,path))
             img_tensor = trans_totensor(img)
             img_PIL = trans_toPIL(img_tensor)
         except Exception as e:
@@ -210,7 +220,10 @@ class V2XVERSEBaseDataset(Dataset):
 
     def _load_json(self, path):
         try:
-            json_value = json.load(open(os.path.join(self.root_dir,path)))
+            if path.startswith(self.root_dir):
+                json_value = json.load(open(path))
+            else:
+                json_value = json.load(open(os.path.join(self.root_dir,path)))
         except Exception as e:
             _logger.info(path)
             n = path[-9:-5]
@@ -220,7 +233,10 @@ class V2XVERSEBaseDataset(Dataset):
 
     def _load_npy(self, path):
         try:
-            array = np.load(os.path.join(self.root_dir,path), allow_pickle=True)
+            if path.startswith('external'):
+                array = np.load(path, allow_pickle=True)
+            else:
+                array = np.load(os.path.join(self.root_dir,path), allow_pickle=True)
         except Exception as e:
             _logger.info(path)
             n = path[-8:-4]

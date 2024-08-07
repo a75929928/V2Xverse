@@ -16,7 +16,14 @@ export CHALLENGE_TRACK_CODENAME=SENSORS
 export DEBUG_CHALLENGE=0
 export REPETITIONS=1 # multiple evaluation runs
 export TEAM_AGENT=${LEADERBOARD_ROOT}/team_code/auto_pilot.py # agent
-export RESUME=0
+# 一次性收集数据存在问题 后续再收集从之前的checkpoint继续即可
+if [ -f "$CHECKPOINT_ENDPOINT" ]; then
+    export RESUME=1
+else
+    export RESUME=0
+fi
+
+# export RESUME=0
 export EGO_NUM=2
 
 python ${LEADERBOARD_ROOT}/leaderboard/leaderboard_evaluator_parameter.py \

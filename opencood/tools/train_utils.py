@@ -12,6 +12,7 @@ from datetime import datetime
 import shutil
 import torch
 import torch.optim as optim
+import timm # scheduler required
 
 def backup_script(full_path, folders_to_save=["models", "data_utils", "utils", "loss"]):
     target_folder = os.path.join(full_path, 'scripts')
@@ -264,13 +265,40 @@ def setup_lr_schedular(hypes, optimizer, init_epoch=None):
                                 milestones=milestones,
                                 gamma=gamma)
 
+    # add shcedular of select2col
+    elif lr_schedule_config['core_method'] == 'cosineannealwarm':
+        print('cosine annealing is chosen for lr scheduler')
+        from timm.scheduler.cosine_lr import CosineLRScheduler
+
+        # revised to fit with new ports
+        num_steps = lr_schedule_config['epoches'] * init_epoch # NOTE multiply num_steps per epoch indeed
+        warmup_lr = lr_schedule_config['warmup_lr']
+        warmup_steps = lr_schedule_config['warmup_epoches'] * init_epoch
+        lr_min = lr_schedule_config['lr_min']
+        # num_steps = lr_schedule_config['epoches'] * n_iter_per_epoch
+        # warmup_lr = lr_schedule_config['warmup_lr']
+        # warmup_steps = lr_schedule_config['warmup_epoches'] * n_iter_per_epoch
+        # lr_min = lr_schedule_config['lr_min']
+
+        scheduler = CosineLRScheduler(
+            optimizer,
+            t_initial=num_steps,
+            lr_min=lr_min,
+            warmup_lr_init=warmup_lr,
+            warmup_t=warmup_steps,
+            cycle_limit=1,
+            t_in_epochs=False,
+        )
     else:
         from torch.optim.lr_scheduler import ExponentialLR
         gamma = lr_schedule_config['gamma']
         scheduler = ExponentialLR(optimizer, gamma)
 
-    for _ in range(last_epoch):
-        scheduler.step()
+    # ignore cos scheduler since its step func differs from normal one
+    if not (lr_schedule_config['core_method'] == 'cosineannealwarm'): 
+    # CosineLRScheduler requires epochs, not steps as input
+        for _ in range(last_epoch):
+            scheduler.step()
 
     return scheduler
 

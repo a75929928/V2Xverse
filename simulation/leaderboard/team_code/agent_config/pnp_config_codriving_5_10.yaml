@@ -36,10 +36,10 @@ perception:
     detect_threshold: *det_thre        #
     detection_range: [36, 12, 12, 12] # front rear left right
     # perception model directory, including model checkpoint and config file
-    perception_model_dir: 'checkpoints/codriving/perception'
+    perception_model_dir: '/home/hjh/carla/Gym/V2Xverse/opencood/logs/v2xverse_codriving_ms_atten_multiclass_2024_08_02_17_24_26'
 
 planning:
     core_method: 'MotionNet'
     planner_config: "codriving/hypes_yaml/codriving/end2end_codriving.yaml"
     # planner model checkpoint
-    planner_model_checkpoint: 'checkpoints/codriving/codriving_planner.ckpt'
+    planner_model_checkpoint: '/home/hjh/carla/Gym/V2Xverse/opencood/logs/v2xverse_codriving_ms_atten_multiclass_2024_08_02_17_24_26/planner_e2e-isee-20240805-153203/models/epoch_10.ckpt'

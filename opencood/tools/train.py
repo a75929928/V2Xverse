@@ -86,7 +86,11 @@ def main():
         # if we train the model from scratch, we need to create a folder
         # to save the model,
         saved_path = train_utils.setup_train(hypes)
-        scheduler = train_utils.setup_lr_schedular(hypes, optimizer)
+        
+        if hypes['lr_scheduler']['core_method'] == 'cosineannealwarm':
+            num_steps = len(train_loader) # align with select2col scheduler
+            scheduler = train_utils.setup_lr_schedular(hypes, optimizer, num_steps)
+        else: scheduler = train_utils.setup_lr_schedular(hypes, optimizer)
 
     # we assume gpu is necessary
     if torch.cuda.is_available():
