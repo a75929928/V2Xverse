@@ -332,9 +332,12 @@ def getIntermediatemulticlassFusionDataset(cls):
             cav_id_list = []
             projected_lidar_clean_list = [] # disconet
 
+            time_delay_list = [] # adding time delay
+
             if self.visualize or self.kd_flag:
                 projected_lidar_stack = []
 
+            '''Similar Distance calculation without Further combination with communication delay'''
             # loop over all CAVs to process information
             for cav_id, selected_cav_base in base_data_dict.items():
                 # check if the cav is within the communication range with ego
@@ -438,7 +441,9 @@ def getIntermediatemulticlassFusionDataset(cls):
                     if self.visualize or self.kd_flag:
                         projected_lidar_stack.append(
                             selected_cav_processed['projected_lidar'])
-                
+                        
+                    time_delay_list.append(selected_cav_base.get('time_delay', 0)) # added
+
                 if True: #self.supervise_single and extra_source==None:
                     single_label_list.append(selected_cav_processed['single_label_dict'])
                     single_object_bbx_center_list.append(selected_cav_processed['single_object_bbx_center'])
@@ -485,7 +490,8 @@ def getIntermediatemulticlassFusionDataset(cls):
                 processed_data_dict['ego'].update(
                     {'object_bbx_center': object_bbx_center,  # (100,7)
                     'object_bbx_mask': mask, # (100,)
-                    'object_ids': [object_id_stack[i] for i in unique_indices],     
+                    'object_ids': [object_id_stack[i] for i in unique_indices],   
+                    'time_delay': time_delay_list # added
                     }   
                 )
 
@@ -493,7 +499,8 @@ def getIntermediatemulticlassFusionDataset(cls):
             label_dict = {}
             if tpe == 'all':
                 # unused label
-                if False:
+                if True: # NOTE 'targets' used in Select2Col loss
+                # if False:
                     label_dict = \
                         self.post_processor.generate_label(
                             gt_box_center=object_bbx_center,
@@ -595,6 +602,9 @@ def getIntermediatemulticlassFusionDataset(cls):
             img_right = []
             BEV = []
 
+            # delay
+            time_delay = []
+
             dict_list = []
             
             # TODO: LSS debug
@@ -611,6 +621,9 @@ def getIntermediatemulticlassFusionDataset(cls):
 
             for i in range(len(batch)):
                 ego_dict = batch[i]['ego']
+
+                if len(ego_dict['time_delay']) > 0:
+                    time_delay.append(ego_dict['time_delay'])
                 det_data.append(torch.from_numpy(ego_dict['det_data']).unsqueeze(0))
                 detmap_pose.append(ego_dict['detmap_pose'])
                 if not online_eval_only:
@@ -700,7 +713,8 @@ def getIntermediatemulticlassFusionDataset(cls):
             lidar_pose_clean = torch.from_numpy(np.concatenate(lidar_pose_clean_list, axis=0))
             # unused label
             label_torch_dict = {}
-            if False:
+            if True:
+            # if False: # NOTE indeed select2col needs it
                 label_torch_dict = \
                     self.post_processor.collate_batch(label_dict_list)
 
@@ -728,8 +742,20 @@ def getIntermediatemulticlassFusionDataset(cls):
                                     'lidar_pose': lidar_pose,
                                     'anchor_box': self.anchor_box_torch})
 
-
             output_dict['ego'].update({'dict_list': dict_list})
+            
+            # NOTE extra delay calculation ignored
+            # time_delay = time_delay + (self.max_cav - len(time_delay)) * [0.]
+
+            # Check nested time_delay lists since length of time_delay would change with rsu
+            delay_list_consistent = True
+            if any(isinstance(ele, list) for ele in time_delay):
+                delay_list_consistent = (all(len(sublist) == len(time_delay[0]) for sublist in time_delay))
+            if not delay_list_consistent:
+                max_length = max(len(sublist) for sublist in time_delay)
+                time_delay = [np.pad(sublist, (0, max_length - len(sublist)), mode='constant') for sublist in time_delay]
+            time_delay = torch.from_numpy(np.array(time_delay))
+            output_dict['ego'].update({'time_delay': time_delay})
 
             if self.visualize:
                 origin_lidar = torch.from_numpy(np.array(origin_lidar))
@@ -854,6 +880,14 @@ def getIntermediatemulticlassFusionDataset(cls):
             if online_eval_only == False:
                 online_eval_only = self.online_eval_only
 
+            # rename variable 
+            if 'psm' in output_dict['ego']:
+                output_dict['ego']['cls_preds'] = output_dict['ego']['psm']
+            if 'rm' in output_dict:
+                output_dict['ego']['reg_preds'] = output_dict['ego']['rm']
+            if 'dm' in output_dict:
+                output_dict['ego']['dir_preds'] = output_dict['ego']['dm']
+
             num_class = output_dict['ego']['cls_preds'].shape[1]
             
 
@@ -872,7 +906,8 @@ def getIntermediatemulticlassFusionDataset(cls):
                     data_dict_single['ego']['object_ids'] = data_dict['ego']['object_ids'][num_list[i]]
 
                 output_dict_single['ego']['cls_preds'] = output_dict['ego']['cls_preds'][:,i:i+1,:,:]
-                output_dict_single['ego']['reg_preds'] = output_dict['ego']['reg_preds_multiclass'][:,i,:,:]
+                if 'reg_preds_multiclass' in output_dict['ego']:
+                    output_dict_single['ego']['reg_preds'] = output_dict['ego']['reg_preds_multiclass'][:,i,:,:]
 
                 pred_box_tensor, pred_score = \
                     self.post_processor.post_process(data_dict_single, output_dict_single)

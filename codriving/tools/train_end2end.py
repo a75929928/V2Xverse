@@ -358,7 +358,7 @@ def train_one_epoch(
                 # warp feature in time sequence
                 pred_batch_data['feature_warpped_list'] = []
 
-                for b in range(len(perception_results_list[0]['fused_feature'])):
+                for b in range(len(perception_results_list[0]['fused_feature'])): # fused_feature [1, 256, 50, 176] (should be [, , 96, 192])
                     feature_dim = perception_results_list[0]['fused_feature'].shape[1] # 128,256
                     feature_to_warp = torch.zeros(1, 5, feature_dim, 192, 96).to(DEVICE).float()
                     det_map_pose = torch.zeros(1, 5, 3).to(DEVICE).float()

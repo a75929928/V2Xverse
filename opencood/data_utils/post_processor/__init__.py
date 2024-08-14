@@ -3,6 +3,7 @@
 # License: TDG-Attribution-NonCommercial-NoDistrib
 
 from opencood.data_utils.post_processor.voxel_postprocessor import VoxelPostprocessor
+from opencood.data_utils.post_processor.voxel_postprocessor_select2col import VoxelPostprocessorSelect2Col
 from opencood.data_utils.post_processor.bev_postprocessor import BevPostprocessor
 from opencood.data_utils.post_processor.ciassd_postprocessor import CiassdPostprocessor
 from opencood.data_utils.post_processor.fpvrcnn_postprocessor import FpvrcnnPostprocessor
@@ -10,6 +11,7 @@ from opencood.data_utils.post_processor.uncertainty_voxel_postprocessor import U
 
 __all__ = {
     'VoxelPostprocessor': VoxelPostprocessor,
+    'VoxelPostprocessorSelect2Col': VoxelPostprocessorSelect2Col,
     'BevPostprocessor': BevPostprocessor,
     'CiassdPostprocessor': CiassdPostprocessor,
     'FpvrcnnPostprocessor': FpvrcnnPostprocessor,

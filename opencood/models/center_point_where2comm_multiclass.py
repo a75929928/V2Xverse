@@ -139,6 +139,7 @@ class centerpointwhere2commmulticlass(nn.Module):
 
         # print('spatial_features_2d: ', spatial_features_2d.shape)
         if self.multi_scale:
+            # fused feature torch.Size([4, 384, 96, 288])
             fused_feature, communication_rates, result_dict = self.fusion_net(batch_dict['spatial_features'],
                                             psm_single,
                                             record_len,
@@ -195,6 +196,7 @@ class centerpointwhere2commmulticlass(nn.Module):
                        'comm_rate': communication_rates
                        })
         
+        # shape torch.Size([4, 128, 96, 288])
         output_dict.update({'fused_feature': fused_feature}) # For Planner
         return output_dict
 

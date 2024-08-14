@@ -15,9 +15,7 @@ train_params:
 
 input_source: ['lidar']
 label_type: lidar
-
 comm_range: 200
-
 fusion:
   args:
     clip_pc: false

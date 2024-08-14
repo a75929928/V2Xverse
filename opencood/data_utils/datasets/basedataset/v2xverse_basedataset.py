@@ -24,8 +24,11 @@ from opencood.utils.transformation_utils import x1_to_x2
 from opencood.data_utils.pre_processor import build_preprocessor
 from opencood.data_utils.post_processor import build_postprocessor
 
+"""Revised time_delay to real one(instead of presupposed parameter)"""
+from opencood.data_utils.datasets.basedataset.basedataset import BaseDataset
 
-class V2XVERSEBaseDataset(Dataset):
+class V2XVERSEBaseDataset(BaseDataset):
+# class V2XVERSEBaseDataset(Dataset):
     def __init__(self, params, visualize, train=True):
         self.params = params
         self.visualize = visualize
@@ -191,8 +194,12 @@ class V2XVERSEBaseDataset(Dataset):
         self.first_det = False
         print("Sub route dir nums: %d" % len(self.route_frames))
 
+        '''Weird as it looks, I simply fetch route_frames for database initialization'''
+        if self.params['model']['core_method'].endswith('Select2Col'):
+            super().__init__(params, visualize, train, dataset_split_id=-1) 
+
     def _load_text(self, path):
-        # NOTE Originial One Regardless repeat prefix
+        # NOTE originial one ignored repeat prefix
         if path.startswith(self.root_dir):
             text = open(path, 'r').read()
         else:
@@ -518,10 +525,14 @@ class V2XVERSEBaseDataset(Dataset):
             visible_actors = self.get_visible_actors(scene_dict, frame_id)
             data = OrderedDict()
             data['car_0'] = self.get_one_record(scene_dict['ego'], frame_id , agent='ego', visible_actors=visible_actors['car_0'], tpe=tpe)
+            # add route_dir as extra params for alignment
+            data['car_0'].update({'route_dir': scene_dict['ego']})
             if self.params['train_params']['max_cav'] > 1:
                 for i, route_dir in enumerate(scene_dict['other_egos']):
                     try:
                         data['car_{}'.format(i+1)] = self.get_one_record(route_dir, frame_id_latency , agent='other_ego', visible_actors=visible_actors['car_{}'.format(i+1)], tpe=tpe)
+                        # since id is not directly correlated to dir name, seperately determine its route directory
+                        data['car_{}'.format(i+1)].update({'route_dir': route_dir})
                     except:
                         print('load other ego failed')
                         continue
@@ -529,6 +540,8 @@ class V2XVERSEBaseDataset(Dataset):
                 for i, rsu_dir in enumerate(scene_dict['rsu']):
                     try:
                         data['rsu_{}'.format(i)] = self.get_one_record(rsu_dir, frame_id_latency, agent='rsu', visible_actors=visible_actors['rsu_{}'.format(i)], tpe=tpe)
+                        # added
+                        data['rsu_{}'.format(i)].update({'route_dir': rsu_dir})
                     except:
                         print('load rsu failed')
                         continue
@@ -543,10 +556,40 @@ class V2XVERSEBaseDataset(Dataset):
                         data['car_{}'.format(i+1)] = self.get_one_record(route_dir=None, frame_id=None , agent='other_ego', visible_actors=None, tpe=tpe, extra_source=extra_source['car_data'][i+1])
                 for i in range(len(extra_source['rsu_data'])):
                     data['rsu_{}'.format(i)] = self.get_one_record(route_dir=None, frame_id=None , agent='rsu', visible_actors=None, tpe=tpe, extra_source=extra_source['rsu_data'][i])            
+        
+        # import copy
+        # origin_data = copy.deepcopy(data)
+                    
+        if self.params['model']['core_method'].endswith('Select2Col'):
+            data = super().retrieve_delay_data(data, scene_dict, frame_id, visible_actors, tpe, cur_ego_pose_flag=True, uni_time_delay=-1, model_type='Select2Col')
+
+        # Compare effects of retrieve_delay_data
+        # self.dict_diff(data['car_0'], origin_data['car_0'])
+
         data['car_0']['scene_dict'] = scene_dict
         data['car_0']['frame_id'] = frame_id
         return data
 
+    def dict_diff(self, dict1, dict2, parent_key=''):
+        keys_in_both = set(dict1.keys()) & set(dict2.keys())
+        keys_only_in_dict1 = set(dict1.keys()) - set(dict2.keys())
+        keys_only_in_dict2 = set(dict2.keys()) - set(dict1.keys())
+
+        for key in keys_only_in_dict1:
+            print(f"Key '{key}' is only in the first dictionary")
+        for key in keys_only_in_dict2:
+            print(f"Key '{key}' is only in the second dictionary")
+
+        # 比较键在两个字典中都存在的情况
+        for key in keys_in_both:
+            sub_key = f"{parent_key}.{key}" if parent_key else key
+            if isinstance(dict1[key], dict) and isinstance(dict2[key], dict):
+                self.dict_diff(dict1[key], dict2[key], sub_key)
+            elif isinstance(dict1[key], np.ndarray):
+                if dict1[key].all != dict2[key].all:
+                    print(f"Difference at key '{sub_key}'")
+            elif dict1[key] != dict2[key]:
+                print(f"Difference at key '{sub_key}'")
 
     def __len__(self):
         return len(self.route_frames)
@@ -556,31 +599,6 @@ class V2XVERSEBaseDataset(Dataset):
         Abstract method, needs to be define by the children class.
         """
         pass
-
-    @staticmethod
-    def extract_timestamps(yaml_files):
-        """
-        Given the list of the yaml files, extract the mocked timestamps.
-
-        Parameters
-        ----------
-        yaml_files : list
-            The full path of all yaml files of ego vehicle
-
-        Returns
-        -------
-        timestamps : list
-            The list containing timestamps only.
-        """
-        timestamps = []
-
-        for file in yaml_files:
-            res = file.split('/')[-1]
-
-            timestamp = res.replace('.yaml', '')
-            timestamps.append(timestamp)
-
-        return timestamps
 
     @staticmethod
     def return_timestamp_key(scenario_database, timestamp_index):
