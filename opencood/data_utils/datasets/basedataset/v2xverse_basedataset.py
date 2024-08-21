@@ -468,6 +468,12 @@ class V2XVERSEBaseDataset(BaseDataset):
             output_record['BEV'] = BEV
         else:
             output_record['BEV'] = None
+
+        # Retrieve time_delay in closed_loop simulation
+        if extra_source is not None:
+            if 'time_delay' in extra_source: 
+                output_record['time_delay'] = extra_source['time_delay']
+
         return output_record
 
     def filter_actors_data_according_to_visible(self, actors_data, visible_actors):
@@ -545,10 +551,16 @@ class V2XVERSEBaseDataset(BaseDataset):
                     except:
                         print('load rsu failed')
                         continue
+            
+            # Calculate distance and store historical data with dataset
+            if self.params['model']['core_method'].endswith('Select2Col'):
+                data = super().retrieve_delay_data(data, scene_dict, frame_id, visible_actors, tpe, cur_ego_pose_flag=True, uni_time_delay=-1, model_type='Select2Col')
+
         else:
             data = OrderedDict()
             scene_dict = None
             frame_id = None
+            # first element in raw_data['car_data'] should always be current ego
             data['car_0'] = self.get_one_record(route_dir=None, frame_id=None , agent='ego', visible_actors=None, tpe=tpe, extra_source=extra_source['car_data'][0])
             if self.params['train_params']['max_cav'] > 1:
                 if len(extra_source['car_data']) > 1:
@@ -556,41 +568,17 @@ class V2XVERSEBaseDataset(BaseDataset):
                         data['car_{}'.format(i+1)] = self.get_one_record(route_dir=None, frame_id=None , agent='other_ego', visible_actors=None, tpe=tpe, extra_source=extra_source['car_data'][i+1])
                 for i in range(len(extra_source['rsu_data'])):
                     data['rsu_{}'.format(i)] = self.get_one_record(route_dir=None, frame_id=None , agent='rsu', visible_actors=None, tpe=tpe, extra_source=extra_source['rsu_data'][i])            
-        
-        # import copy
-        # origin_data = copy.deepcopy(data)
-                    
-        if self.params['model']['core_method'].endswith('Select2Col'):
-            data = super().retrieve_delay_data(data, scene_dict, frame_id, visible_actors, tpe, cur_ego_pose_flag=True, uni_time_delay=-1, model_type='Select2Col')
 
-        # Compare effects of retrieve_delay_data
-        # self.dict_diff(data['car_0'], origin_data['car_0'])
+            # Close-Loop bandwidth/delay calculation, ignore initial steps
+            if self.params['model']['core_method'].endswith('Select2Col'):
+            # if self.params['model']['core_method'].endswith('Select2Col') and 'time_delay' in data['car_0']:
+                # historical ego data is autimatically filled as other ego data
+                data = super().retrieve_delay_data_closed_loop(data, tpe)
 
         data['car_0']['scene_dict'] = scene_dict
         data['car_0']['frame_id'] = frame_id
         return data
-
-    def dict_diff(self, dict1, dict2, parent_key=''):
-        keys_in_both = set(dict1.keys()) & set(dict2.keys())
-        keys_only_in_dict1 = set(dict1.keys()) - set(dict2.keys())
-        keys_only_in_dict2 = set(dict2.keys()) - set(dict1.keys())
-
-        for key in keys_only_in_dict1:
-            print(f"Key '{key}' is only in the first dictionary")
-        for key in keys_only_in_dict2:
-            print(f"Key '{key}' is only in the second dictionary")
-
-        # 比较键在两个字典中都存在的情况
-        for key in keys_in_both:
-            sub_key = f"{parent_key}.{key}" if parent_key else key
-            if isinstance(dict1[key], dict) and isinstance(dict2[key], dict):
-                self.dict_diff(dict1[key], dict2[key], sub_key)
-            elif isinstance(dict1[key], np.ndarray):
-                if dict1[key].all != dict2[key].all:
-                    print(f"Difference at key '{sub_key}'")
-            elif dict1[key] != dict2[key]:
-                print(f"Difference at key '{sub_key}'")
-
+    
     def __len__(self):
         return len(self.route_frames)
 
