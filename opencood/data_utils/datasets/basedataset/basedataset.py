@@ -284,46 +284,30 @@ class BaseDataset(Dataset):
                     data[cav_delay_id]['ego'] = False
         return data
     
-    def retrieve_delay_data_closed_loop(self, data, tpe):
+    def retrieve_delay_data_closed_loop(self, time_delay_database, tpe):
+    # def retrieve_delay_data_closed_loop(self, data, tpe):
         """
-        data deemed to have ample historical information about ego and rsu
-        ego gets additional historical information
-        rsu only get delayed historical information
+        Instead of input [car_0, car_1, rsu_0, rsu_1, ...] and further sort them by time_delay
+        Sort beforehand as {0: {'car_0', 'rsu_0'}, 1: {'car_0', 'rsu_0'}}
         """
-        # e.g record 6 frames of data, real time delay stored in ['time_delay']
-        # {'car_0': ...; 'car_1':...; 'rsu_0': ...; 'rsu_6':...} 
-        # car_0 is ALWAYS current ego while others should be past ego
-        # rsu_0 and several others could be current or past rsu
+
         processed_data = {}
-
-        # Empty historical data at first
-        if 'time_delay' not in data['car_0']:
-            processed_data['car_0'] = copy.copy(data['car_0']) # initially only get current data
-            processed_data['car_0']['time_delay'] = 0
-            return processed_data
+        # Determine current cav nums 
+        # Since rsu occurs to disappear at current frames and exist at former frame, search rsu from frame nearby
+        if len(time_delay_database[0])<len(time_delay_database[1]):
+            for cav_id, cav_value in time_delay_database[1].items():
+                if cav_id.startswith('rsu'):
+                    time_delay_database[0].update({cav_id: cav_value})
         
-        time_delay_database = {}
-        # Organize base data according to time delay
-        for cav_id, cav_content in data.items():
-            if cav_content['time_delay'] not in time_delay_database:
-                time_delay_database.update({cav_content['time_delay']: {cav_id: cav_content}})
-            else:
-                time_delay_database[cav_content['time_delay']].update({cav_id: cav_content})
-
-        # Determine current cav nums
-        # NOTE changing RSU would influce its accuracy
         cavs_num = len(time_delay_database[0].keys())
 
         # car_1, ..., car_n is historical data here
-        ego_cav_content = data['car_0']
+        ego_cav_content = time_delay_database[0]['car_0']
         cur_ego_lidar_pose = ego_cav_content['params']['lidar_pose'] 
 
         # Calculate current distance from ego to rsu, and then determine delayed information
         for cav_id, cav_content in list(time_delay_database[0].items()):
 
-            if cav_id == ('car_0'): cav_type = 'ego'
-            elif cav_id.startswith('rsu'): cav_type = 'rsu'
-            
             cur_cav_lidar_pose = cav_content['params']['lidar_pose']
 
             distance = \
@@ -342,9 +326,12 @@ class BaseDataset(Dataset):
                 delay_cav_content = time_delay_database[timestamp_key_delay][cav_id]
                 processed_data[cav_id] = delay_cav_content
                 processed_data[cav_id]['time_delay'] = timestamp_key_delay
-                # delay_cav_content = self.get_one_record_v2xverse(data[cav_id]['route_dir'], timestamp_key_delay , agent=cav_type, visible_actors=visible_actors[cav_id], tpe=tpe)
             except Exception as e:
-                print(f"Value Error: {e}")
+                print(f"""Key Error: {e} dose't exist at {timestamp_key_delay},
+                        replaced with current frame data""")
+                delay_cav_content = time_delay_database[0][cav_id]
+                processed_data[cav_id] = delay_cav_content
+                processed_data[cav_id]['time_delay'] = 0
 
         ## historical data, stored seperately as background ego
         for idxadd in [10000,10001]:
@@ -357,24 +344,23 @@ class BaseDataset(Dataset):
             # NOTE consider storage path of different ego agents
             # delay_cav_content = self.get_one_record_v2xverse(processed_data[cav_id]['route_dir'], timestamp_key_delay , agent=cav_type, visible_actors=visible_actors[cav_id], tpe=tpe)
             # delay_params = delay_cav_content['params']
-            if 'time_delay' in data['car_0']:
-                # batch causes interval change time_delay_database [0, 1, 2, 3, 4] --> [0, 4, 5, 6, 7]
-                # so simply using closest timestamp may cause time delay always equal to 0
-                processed_data[cav_delay_id]['time_delay'] = find_closest_simple(time_delay_database.keys(), timestamp_delay) 
-                timestamp_index_delay = processed_data[cav_delay_id]['time_delay'] 
-                # find past ego data, since only ego is car, simply use startswith as filter
-                for cav_id, cav_content in time_delay_database[timestamp_index_delay].items():
-                    if cav_id.startswith('car'):
-                        delay_ego_content = copy.copy(cav_content)
-                        break
-                # else:
-                #     delay_ego_content = copy.copy(data['car_0']) # or attribute 'ego' would affect car_0
-                #     delay_ego_content['time_delay'] = timestamp_delay
-                # delay_ego_content = self.get_one_record_v2xverse(scene_dict['ego'], timestamp_key_delay , agent='ego', visible_actors=visible_actors['car_0'], tpe=tpe)
-            
-                # NOTE only params and lidar_np needed, get all attributes for convenience
-                processed_data[cav_delay_id] = delay_ego_content
-                processed_data[cav_delay_id]['ego'] = False
+            # batch causes interval change time_delay_database [0, 1, 2, 3, 4] --> [0, 4, 5, 6, 7]
+            # so simply using closest timestamp may cause time delay always equal to 0
+            processed_data[cav_delay_id]['time_delay'] = find_closest_simple(time_delay_database.keys(), timestamp_delay) 
+            timestamp_index_delay = processed_data[cav_delay_id]['time_delay'] 
+            # find past ego data, since only ego is car, simply use startswith as filter
+            for cav_id, cav_content in time_delay_database[timestamp_index_delay].items():
+                if cav_id.startswith('car'):
+                    delay_ego_content = copy.copy(cav_content)
+                    break
+            # else:
+            #     delay_ego_content = copy.copy(data['car_0']) # or attribute 'ego' would affect car_0
+            #     delay_ego_content['time_delay'] = timestamp_delay
+            # delay_ego_content = self.get_one_record_v2xverse(scene_dict['ego'], timestamp_key_delay , agent='ego', visible_actors=visible_actors['car_0'], tpe=tpe)
+        
+            # NOTE only params and lidar_np needed, get all attributes for convenience
+            processed_data[cav_delay_id] = delay_ego_content
+            processed_data[cav_delay_id]['ego'] = False
 
         return processed_data
 

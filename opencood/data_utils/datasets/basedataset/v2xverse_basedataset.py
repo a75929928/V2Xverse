@@ -562,18 +562,42 @@ class V2XVERSEBaseDataset(BaseDataset):
             frame_id = None
             # first element in raw_data['car_data'] should always be current ego
             data['car_0'] = self.get_one_record(route_dir=None, frame_id=None , agent='ego', visible_actors=None, tpe=tpe, extra_source=extra_source['car_data'][0])
-            if self.params['train_params']['max_cav'] > 1:
-                if len(extra_source['car_data']) > 1:
-                    for i in range(len(extra_source['car_data'])-1):
-                        data['car_{}'.format(i+1)] = self.get_one_record(route_dir=None, frame_id=None , agent='other_ego', visible_actors=None, tpe=tpe, extra_source=extra_source['car_data'][i+1])
-                for i in range(len(extra_source['rsu_data'])):
-                    data['rsu_{}'.format(i)] = self.get_one_record(route_dir=None, frame_id=None , agent='rsu', visible_actors=None, tpe=tpe, extra_source=extra_source['rsu_data'][i])            
-
-            # Close-Loop bandwidth/delay calculation, ignore initial steps
+            
+            # Close-Loop bandwidth/delay calculation, initially act as independent vehicle since historical data is not available.
             if self.params['model']['core_method'].endswith('Select2Col'):
-            # if self.params['model']['core_method'].endswith('Select2Col') and 'time_delay' in data['car_0']:
-                # historical ego data is autimatically filled as other ego data
-                data = super().retrieve_delay_data_closed_loop(data, tpe)
+                if len(extra_source['car_data']) > 1:
+
+                    # Organize base data according to time delay
+                    time_delay_database = {0: {'car_0': data['car_0']}}
+
+                    for i in range(len(extra_source['car_data'])-1): # starts from 1, since 0 is current ego
+                        car_data = self.get_one_record(route_dir=None, frame_id=None , agent='other_ego', visible_actors=None, tpe=tpe, extra_source=extra_source['car_data'][i+1])
+                        time_delay = car_data['time_delay']
+                        if time_delay not in time_delay_database:
+                            time_delay_database[time_delay] = {}
+                        car_index = len([car_id for car_id in time_delay_database[time_delay] if car_id.startswith('car_')]) # always record car_num in certain frame
+                        time_delay_database[time_delay].update({'car_{}'.format(car_index): car_data})
+                    
+                    for i in range(len(extra_source['rsu_data'])):
+                        rsu_data = self.get_one_record(route_dir=None, frame_id=None , agent='rsu', visible_actors=None, tpe=tpe, extra_source=extra_source['rsu_data'][i])            
+                        time_delay = rsu_data['time_delay']
+                        if time_delay not in time_delay_database:
+                            time_delay_database[time_delay] = {}                       
+                        rsu_index = len([rsu_id for rsu_id in time_delay_database[time_delay] if rsu_id.startswith('rsu_')]) # always record rsu_num in certain frame
+                        time_delay_database[time_delay].update({'rsu_{}'.format(rsu_index): rsu_data})
+
+                    data = super().retrieve_delay_data_closed_loop(time_delay_database, tpe)
+
+            # Original data augmentation for Codriving
+            else:
+                if self.params['train_params']['max_cav'] > 1:
+                    if len(extra_source['car_data']) > 1:
+                        for i in range(len(extra_source['car_data'])-1):
+                            data['car_{}'.format(i+1)] = self.get_one_record(route_dir=None, frame_id=None , agent='other_ego', visible_actors=None, tpe=tpe, extra_source=extra_source['car_data'][i+1])
+                    for i in range(len(extra_source['rsu_data'])):
+                        data['rsu_{}'.format(i)] = self.get_one_record(route_dir=None, frame_id=None , agent='rsu', visible_actors=None, tpe=tpe, extra_source=extra_source['rsu_data'][i])            
+
+            
 
         data['car_0']['scene_dict'] = scene_dict
         data['car_0']['frame_id'] = frame_id

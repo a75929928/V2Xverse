@@ -446,7 +446,31 @@ class PnP_Agent(autonomous_agent.AutonomousAgent):
 
         # If the frame is skipped.
         if self.step % self.config['simulation']['skip_frames'] != 0 and self.step > self.config['simulation']['skip_frames']:
-            # return the previous control signal.   
+            
+            # only restore the data intervaled by skip_frames.
+            if self.step % self.config['RSU']['change_rsu_frame'] != 0:
+                for vehicle_num in range(self.ego_vehicles_num):
+                    if CarlaDataProvider.get_hero_actor(hero_id=vehicle_num) is not None:
+                        rsu_data.append(
+                            self.rsu[vehicle_num].process(self.rsu[vehicle_num].tick(),is_train=True)
+                        )
+                    else:
+                        rsu_data.append(None)
+
+            # capture a list of sensor data from ego vehicles 
+            ego_data = [
+                self.tick(input_data, vehicle_num)
+                if CarlaDataProvider.get_hero_actor(hero_id=vehicle_num) is not None
+                else None
+                for vehicle_num in range(self.ego_vehicles_num)
+            ]
+            self.infer.get_action_from_list_inter(car_data_raw=ego_data,
+                                                rsu_data_raw=rsu_data,
+                                                step=self.step,
+                                                timestamp=timestamp,
+                                                skipped=True)
+
+            # return the previous control signal.  
             return self.infer.prev_control
 
         # capture a list of sensor data from rsu

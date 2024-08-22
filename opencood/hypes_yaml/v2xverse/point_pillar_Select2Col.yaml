@@ -21,7 +21,7 @@ train_params:
   batch_size: &batch_size 4
   # batch_size: &batch_size 1
   epoches: &epoches 60
-  eval_freq: 1
+  eval_freq: 4
   save_freq: 1
   max_cav: &max_cav 7
 

@@ -476,7 +476,7 @@ class PnP_infer():
 			(self.save_path / "meta").mkdir(parents=True, exist_ok=False)
 
 
-	def get_action_from_list_inter(self, car_data_raw, rsu_data_raw, step, timestamp):
+	def get_action_from_list_inter(self, car_data_raw, rsu_data_raw, step, timestamp, skipped=False):
 		'''
 		generate the action for N cars from the record data.
 
@@ -535,6 +535,7 @@ class PnP_infer():
 			# else: # collaboration module needs at least two agent data to collaborate, so simply fill it
 			# 	car_data_raw = car_data_raw * latency_step
 				
+		if skipped: return
 
 		### load data for visualization and planning
 		car_data, car_mask = self.check_data(car_data_raw) # mask empty data
@@ -651,18 +652,30 @@ class PnP_infer():
 		feature = fused_feature_3[:,:,:192,:]	
 
 
-
+		# NOTE detmap_pose should share same dimension as car_data_raw(real car num)
+		# However, here only use rsu as background data, simply fetch ego data as detmap
 		self.perception_memory_bank.pop(0)
 		if len(self.perception_memory_bank)<5:
 			for _ in range(5 - len(self.perception_memory_bank)):
 				self.perception_memory_bank.append({
 					'occ_map': occ_map, # N, 1, H, W
 					'drivable_area': torch.stack(da), # N, 1, H, W
-					'detmap_pose': batch_data['detmap_pose'][:len(car_data_raw)], # N, 3
-					# 'detmap_pose': batch_data['detmap_pose'][:len(car_data_raw)], # N, 3
-					'target': batch_data['target'][:len(car_data_raw)], # N, 2
+					'detmap_pose': batch_data['detmap_pose'][:self.ego_vehicles_num], # N, 3
+					# 'detmap_pose': batch_data['detmap_pose'][:self.ego_vehicles_num], # N, 3
+					'target': batch_data['target'][:self.ego_vehicles_num], # N, 2
 					'feature': feature, # N, 128, H, W
 				})
+		# self.perception_memory_bank.pop(0)
+		# if len(self.perception_memory_bank)<5:
+		# 	for _ in range(5 - len(self.perception_memory_bank)):
+		# 		self.perception_memory_bank.append({
+		# 			'occ_map': occ_map, # N, 1, H, W
+		# 			'drivable_area': torch.stack(da), # N, 1, H, W
+		# 			'detmap_pose': batch_data['detmap_pose'][:len(car_data_raw)], # N, 3
+		# 			# 'detmap_pose': batch_data['detmap_pose'][:len(car_data_raw)], # N, 3
+		# 			'target': batch_data['target'][:len(car_data_raw)], # N, 2
+		# 			'feature': feature, # N, 128, H, W
+		# 		})
 		
 
 		### Turn the memoried perception output into planning input

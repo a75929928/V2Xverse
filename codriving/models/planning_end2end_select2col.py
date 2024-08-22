@@ -49,7 +49,7 @@ class MLP(nn.Module):
 class WaypointPlanner_e2e_Select2Col(nn.Module):
     """
     WaypointPlanner with BEV feature and road map as inputs
-    Add Target speed Prediction according to Hidden Bias
+    TODO Add Target speed Prediction in line with Hidden Bias
     """
     def __init__(self, feature_dir=128):
         super().__init__()

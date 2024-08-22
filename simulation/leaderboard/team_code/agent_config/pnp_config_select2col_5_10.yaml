@@ -29,18 +29,18 @@ RSU:
 
 simulation:
     ego_num: 1                     # number of communicating drivable ego vehicles
-    skip_frames: 1                 # frame gap before a new driving control signal is generated
-    # skip_frames: 4                 # frame gap before a new driving control signal is generated
+    # skip_frames: 1                 # frame gap before a new driving control signal is generated
+    skip_frames: 4                 # frame gap before a new driving control signal is generated
 
 perception:
     core_method: 'collaborative_perception'
     detect_threshold: *det_thre        #
     detection_range: [36, 12, 12, 12] # front rear left right
     # perception model directory, including model checkpoint and config file
-    perception_model_dir: '/home/hjh/carla/Gym/V2Xverse/opencood/logs/point_pillar_Select2Col_2024_08_16_16_44_04'
+    perception_model_dir: '/home/hjh/carla/Gym/V2Xverse/opencood/logs/point_pillar_Select2Col'
 
 planning:
     core_method: 'MotionNet'
     planner_config: "codriving/hypes_yaml/codriving/end2end_select2col.yaml"
     # planner model checkpoint
-    planner_model_checkpoint: '/home/hjh/carla/Gym/V2Xverse/opencood/logs/point_pillar_Select2Col_2024_08_16_16_44_04/planner_e2e/models/epoch_4.ckpt'
+    planner_model_checkpoint: '/home/hjh/carla/Gym/V2Xverse/opencood/logs/point_pillar_Select2Col/planner_e2e/models/epoch_4.ckpt'
