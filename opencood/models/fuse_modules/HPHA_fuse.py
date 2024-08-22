@@ -209,25 +209,27 @@ class HPHA(nn.Module):
                 neighbor_feature = batch_node_features[b]
                 x_fuse.append(self.fuse_modules[i](neighbor_feature))
             x_fuse = torch.stack(x_fuse)
-            x_fuse = x_fuse.view(1, -1, x_fuse.shape[2], x_fuse.shape[3]) # flatten batch dimension
+            # x_fuse = x_fuse.view(1, -1, x_fuse.shape[2], x_fuse.shape[3]) # flatten batch dimension
             if len(backbone.deblocks) > 0:
                 ups.append(backbone.deblocks[i](x_fuse))
             else:
                 ups.append(x_fuse)
 
         ## Semantic Information Refined from Temporal Dimension based on Short-term Attention Module
-        ups.append(historical_x.view(1, 128, historical_x.shape[2], historical_x.shape[3])) 
+        # repeat to fit with batch size
+        ups.append(historical_x.view(1, 128, historical_x.shape[2], historical_x.shape[3]).repeat(B, 1, 1, 1)) 
+        # ups.append(historical_x.view(1, 128, historical_x.shape[2], historical_x.shape[3])) 
         # ups.append(historical_x[0].unsqueeze(0)) 
         # ups.append(historical_x[1].unsqueeze(0))
         
         # ups [(B, 128, ..)*num_levels , (1, 64, ..)*2]
         if len(ups) > 1:
-            x_fuse = torch.cat(ups[:self.num_levels], dim=1) # [1, 512, ...] -> [1, 128*b*num_levels+128, x, x]
-            # x_fuse = torch.cat(ups, dim=1) # [1, 512, ...] -> [1, 128*b*num_levels+128, x, x]
+            # x_fuse = torch.cat(ups[:self.num_levels], dim=1) # [1, 512, ...] -> [1, 128*b*num_levels+128, x, x]
+            x_fuse = torch.cat(ups, dim=1) # [1, 512, ...] -> [1, 128*b*num_levels+128, x, x]
         elif len(ups) == 1:
             x_fuse = ups[0]
         x_fuse = self.sta(x_fuse) * x_fuse
         if len(backbone.deblocks) > self.num_levels:
             x_fuse = backbone.deblocks[-1](x_fuse)
+
         return x_fuse
-        # return x_fuse

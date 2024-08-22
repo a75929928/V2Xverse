@@ -273,8 +273,6 @@ class BaseDataset(Dataset):
                     timestamp_index_delay = max(0, timestamp_index - timestamp_delay)
                     timestamp_key_delay = timestamp_index_delay
 
-                    data[cav_delay_id]['time_delay'] = timestamp_delay
-
                     # NOTE consider storage path of different ego agents
                     # delay_cav_content = self.get_one_record_v2xverse(data[cav_id]['route_dir'], timestamp_key_delay , agent=cav_type, visible_actors=visible_actors[cav_id], tpe=tpe)
                     # delay_params = delay_cav_content['params']
@@ -282,6 +280,7 @@ class BaseDataset(Dataset):
                     
                     # NOTE only params and lidar_np needed, get all attributes for convenience
                     data[cav_delay_id] = delay_ego_content
+                    data[cav_delay_id]['time_delay'] = timestamp_delay
                     data[cav_delay_id]['ego'] = False
         return data
     

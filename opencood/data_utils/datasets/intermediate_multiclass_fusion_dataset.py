@@ -714,7 +714,7 @@ def getIntermediatemulticlassFusionDataset(cls):
             # unused label
             label_torch_dict = {}
             if True:
-            # if False: # NOTE indeed select2col needs it
+            # if False: # NOTE select2col needs bbx collate
                 label_torch_dict = \
                     self.post_processor.collate_batch(label_dict_list)
 
@@ -748,12 +748,15 @@ def getIntermediatemulticlassFusionDataset(cls):
             # time_delay = time_delay + (self.max_cav - len(time_delay)) * [0.]
 
             # Check nested time_delay lists since length of time_delay would change with rsu
-            delay_list_consistent = True
-            if any(isinstance(ele, list) for ele in time_delay):
-                delay_list_consistent = (all(len(sublist) == len(time_delay[0]) for sublist in time_delay))
-            if not delay_list_consistent:
-                max_length = max(len(sublist) for sublist in time_delay)
-                time_delay = [np.pad(sublist, (0, max_length - len(sublist)), mode='constant') for sublist in time_delay]
+            # delay_list_consistent = True
+            # if any(isinstance(ele, list) for ele in time_delay):
+            #     delay_list_consistent = (all(len(sublist) == len(time_delay[0]) for sublist in time_delay))
+            # if not delay_list_consistent:
+            #     max_length = max(len(sublist) for sublist in time_delay)
+            #     time_delay = [np.pad(sublist, (0, max_length - len(sublist)), mode='constant') for sublist in time_delay]
+            
+            # instead of fit ele to build matrix, flatten it
+            time_delay = [item for sublist in time_delay for item in sublist]
             time_delay = torch.from_numpy(np.array(time_delay))
             output_dict['ego'].update({'time_delay': time_delay})
 
