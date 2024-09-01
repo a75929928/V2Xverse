@@ -23,7 +23,7 @@ data:
     dataloader:
       type: "DataLoader"
       batch_size: 8
-      num_workers: 8
+      num_workers: 16
   validation:
     dataset:
       type: "CarlaMVDatasetEnd2End"
@@ -42,7 +42,7 @@ data:
     dataloader:
       type: "DataLoader"
       batch_size: 8
-      num_workers: 4
+      num_workers: 16
   test:
     dataset:
       type: "CarlaMVDatasetEnd2End"
@@ -60,7 +60,7 @@ data:
     dataloader:
       type: "DataLoader"
       batch_size: 1
-      num_workers: 4
+      num_workers: 16
   test_comm_thre:
     dataset:
       type: "CarlaMVDatasetWithGTInput"
@@ -78,7 +78,7 @@ data:
     dataloader:
       type: "DataLoader"
       batch_size: 1
-      num_workers: 4
+      num_workers: 16
 
 
 model:

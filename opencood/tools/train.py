@@ -42,7 +42,7 @@ def main():
 
     train_loader = DataLoader(opencood_train_dataset,
                               batch_size=hypes['train_params']['batch_size'],
-                              num_workers=8,
+                              num_workers=16,
                             #   num_workers=4,
                               collate_fn=opencood_train_dataset.collate_batch_train,
                               shuffle=True,
@@ -51,7 +51,7 @@ def main():
                               prefetch_factor=2)
     val_loader = DataLoader(opencood_validate_dataset,
                             batch_size=hypes['train_params']['batch_size'],
-                            num_workers=8,
+                            num_workers=16,
                             # num_workers=4,
                             collate_fn=opencood_train_dataset.collate_batch_train,
                             shuffle=True,

@@ -777,7 +777,6 @@ class PnP_infer():
 			# 	self.prev_control[ego_i] = control
 			self.prev_control[ego_i] = control
 
-
 			control_all.append(control)
 			
 			#### useful for a extral expert decision
